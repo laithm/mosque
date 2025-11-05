@@ -1,20 +1,35 @@
-import tabula
+import pdfplumber
 import pandas as pd
+import re
 
-# Path to your PDF
-pdf_path = "Prayer & Education Centre 2025-2"
+pdf_path = "File.pdf"
+records = []
 
-# This will extract all tables from every page into a list of DataFrames
-tables = tabula.read_pdf(pdf_path, pages="all", multiple_tables=True, lattice=True)
+with pdfplumber.open(pdf_path) as pdf:
+    for page in pdf.pages:
+        lines = page.extract_text().split('\n')
+        for i, line in enumerate(lines):
+            if re.match(r"2025-\d{2}-\d{2}", line):
+                try:
+                    record = {
+                        "Date": line.strip(),
+                        "Fajr Begin": lines[i+3].strip(),
+                        "Fajr Jama'ah": lines[i+4].strip(),
+                        "Sunrise": lines[i+5].strip(),
+                        "Zuhr Begin": lines[i+7].strip(),
+                        "Zuhr Jama'ah": lines[i+8].strip(),
+                        "Asr Begin": lines[i+9].strip(),
+                        "Asr Jama'ah": lines[i+10].strip(),
+                        "Maghrib Begin": lines[i+11].strip(),
+                        "Maghrib Jama'ah": lines[i+12].strip(),
+                        "Isha Begin": lines[i+13].strip(),
+                        "Isha Jama'ah": lines[i+14].strip(),
+                    }
+                    records.append(record)
+                except Exception as e:
+                    print(f"Skipped a record due to indexing error at line {i}: {e}")
 
-# Combine all extracted tables (for all months/pages)
-df_full = pd.concat(tables, ignore_index=True)
+df = pd.DataFrame(records)
+df.to_csv("prayer_timetable_2025.csv", index=False)
+print("Complete CSV saved as 'prayer_timetable_2025.csv'")
 
-# OPTIONAL: Clean up columns (rename, drop unwanted, etc.)
-# Example: If your first row is headers, uncomment this:
-# df_full.columns = df_full.iloc[0]
-# df_full = df_full.drop(df_full.index[0])
-
-# Save to CSV
-df_full.to_csv("prayer_timetable_2025.csv", index=False)
-print("Saved full timetable to 'prayer_timetable_2025.csv'")
